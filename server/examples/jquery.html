@@ -1,13 +1,10 @@
 <html>
 	<head>
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+		<script src="../aow.js"></script>
 		<script type="text/javascript">
-			$.ajax({
-			  method: "GET",
-			  url: "response.json",
-			  done: function(resp) {
-			  	console.log(resp);
-			  }
+			$.get('response.json', function(resp) {
+				console.log(resp);
 			});
 		</script>
 	</head>
