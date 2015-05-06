@@ -16,9 +16,11 @@ if (enabled) {
 		var req = reqs[reqId];
 		req.receiveTime = now();
 		var latency = req.receiveTime - req.startTime;
-		console.log(req);
-		console.log(data);
-		console.log('latency ' + latency);
+		if (debug) {
+			console.log(req);
+			console.log(data);
+			console.log('latency ' + latency);
+		}
 
 		if (typeof req.postDataFilters !== 'undefined' && req.postDataFilters !== null && req.postDataFilters.length != 0) {
 			for (var k in req.postDataFilters) {
@@ -37,21 +39,28 @@ if (enabled) {
 	var socketOpen = false;
 	var reqId = 0;
 	var reqs = [];
+	var debug = false;
 
 	exampleSocket.onopen = function (event) {
 		socketOpen = true;
-		console.log('connection opened');
+		if (debug) {
+			console.log('connection opened');
+		}
 		$(queue).each(function(i, record) {
 			deliver(record);
 		});
-		console.log('flushed queue');
+		if (debug) {
+			console.log('flushed queue');
+		}
 	}
 
 	var originalFunctions = {
 		'get':     jQuery.get,
 		'getJSON': jQuery.getJSON
 	};
-	console.log(originalFunctions);
+	if (debug) {
+		console.log('original functions', originalFunctions);
+	}
 
 	jQuery.get = function() {
 		// Params
@@ -59,7 +68,9 @@ if (enabled) {
 
 		// Only if we support this type of request
 		var supported = false;
-		if (params.length == 2 && typeof params[0] === 'string' && typeof params[1] === 'function') {
+		if (params.length == 1 && typeof params[0] === 'string') {
+			supported = true;
+		} else if (params.length == 2 && typeof params[0] === 'string' && typeof params[1] === 'function') {
 			supported = true;
 		}
 
@@ -127,7 +138,9 @@ if (enabled) {
 
 		// Queue
 		if (!socketOpen) {
-			console.log('request queued for connecting socket')
+			if (debug) {
+				console.log('request queued for connecting socket')
+			}
 			queue.push(record);
 		} else {
 			deliver(record);
@@ -136,7 +149,9 @@ if (enabled) {
 
 	var deliver = function(record) {
 		reqs[record.id].sendTime = now();
-		console.log('sending', record);
+		if (debug) {
+			console.log('sending', record);
+		}
 		exampleSocket.send(record.id + '\t' + record.param);
 	};
 
