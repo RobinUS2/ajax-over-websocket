@@ -111,13 +111,13 @@ func main() {
 	}
 
 	// Webserver
-	http.Handle("/", http.FileServer(http.Dir("."))) // Testing only
-	//http.Handle("/echo", websocket.Handler(EchoServer)) // Handler
+	http.Handle("/", http.FileServer(http.Dir(".")))    // Testing only
+	http.Handle("/echo", websocket.Handler(EchoServer)) // Handler
 
-	http.HandleFunc("/echo", func(w http.ResponseWriter, req *http.Request) {
+	/*http.HandleFunc("/echo", func(w http.ResponseWriter, req *http.Request) {
 		s := websocket.Server{Handler: websocket.Handler(EchoServer)}
 		s.ServeHTTP(w, req)
-	})
+	})*/
 
 	err := http.ListenAndServe(":80", nil)
 	if err != nil {
