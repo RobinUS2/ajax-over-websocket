@@ -13,13 +13,22 @@ if (enabled) {
 		var split = event.data.split('\t');
 		var reqId = split[0];
 		var data = split[1];
-		reqs[reqId].receiveTime = now();
-		var latency = reqs[reqId].receiveTime - reqs[reqId].startTime;
-		console.log(reqs[reqId]);
+		var req = reqs[reqId];
+		req.receiveTime = now();
+		var latency = req.receiveTime - req.startTime;
+		console.log(req);
 		console.log(data);
 		console.log('latency ' + latency);
 
-		if (typeof reqs[reqId].callback === 'function') {
+		if (typeof req.postDataFilters !== 'undefined' && req.postDataFilters !== null && req.postDataFilters.length != 0) {
+			for (var k in req.postDataFilters) {
+				// @todo has own prop
+				var postDataFilter = req.postDataFilters[k];
+				data = postDataFilter.method.apply(this, [data]);
+			}
+		}
+
+		if (typeof req.callback === 'function') {
 			reqs[reqId].callback(data);
 		}
 	};
@@ -39,9 +48,11 @@ if (enabled) {
 	}
 
 	var originalFunctions = {
-		'get': jQuery.get
+		'get':     jQuery.get,
+		'getJSON': jQuery.getJSON
 	};
 	console.log(originalFunctions);
+
 	jQuery.get = function() {
 		// Params
 		var params = arguments;
@@ -57,22 +68,58 @@ if (enabled) {
 			return originalFunctions['get'].apply(this, arguments);
 		}
 
+		var opts = {};
+		if (typeof params[1] === 'function') {
+			opts.callback = params[1];
+		}
+
+		sendRequest(params[0], opts);
+	};
+
+	jQuery.getJSON = function() {
+		// Params
+		var params = arguments;
+
+		// Only if we support this type of request
+		var supported = false;
+		if (params.length == 2 && typeof params[0] === 'string' && typeof params[1] === 'function') {
+			supported = true;
+		}
+
+		// Did we support this?
+		if (!supported) {
+			return originalFunctions['getJSON'].apply(this, arguments);
+		}
+
+		var opts = {};
+		if (typeof params[1] === 'function') {
+			opts.callback = params[1];
+		}
+		opts.postDataFilters = [];
+		opts.postDataFilters.push({ method : JSON.parse });
+
+		sendRequest(params[0], opts);
+	};
+
+	var sendRequest = function(req, opts) {
 		// Get request ID
 		reqId++;
 
 		// Assemble record
 		var record = { 
 			id : reqId, 
-			param : params[0], 
+			param : req, 
 			startTime : now(), 
 			sendTime : null, 
 			receiveTime : null,
-			callback: null
+			callback: null,
+			postDataFilters: []
 		};
-
-		// Callback?
-		if (typeof params[1] === 'function') {
-			record.callback = params[1];
+		if (opts !== null) {
+			for (var k in opts) {
+				// @todo has own prop
+				record[k] = opts[k];
+			}
 		}
 
 		// Track request

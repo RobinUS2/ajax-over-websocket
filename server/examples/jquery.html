@@ -12,7 +12,7 @@
 					var finishTime = myTime();
 					var latency = finishTime - startTime;
 					console.log('end user latency ' + latency);
-					console.log(resp);
+					console.log('get', resp);
 				});
 			};
 			update();
@@ -21,6 +21,10 @@
 			}, 500);
 
 			$.get('response.json');
+
+			$.getJSON('response.json', function(resp) {
+				console.log('json', resp);
+			});
 		</script>
 	</head>
 	<body>
