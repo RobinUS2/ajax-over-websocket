@@ -54,6 +54,7 @@ var aow = function() {
 			}
 
 			if (typeof req.callback === 'function') {
+				// @todo Make jQuery compatible: object data - string text status - jqXHR
 				reqs[reqId].callback(data);
 			}
 		};
