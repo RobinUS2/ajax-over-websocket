@@ -11,7 +11,7 @@ var aow = function() {
 
 		var options = {
 			socket : 'ws://localhost/echo',
-			openTimeout : 500
+			openTimeout : 100
 		};
 
 		var exampleSocket = new WebSocket(options.socket);
@@ -22,6 +22,12 @@ var aow = function() {
 				// Failed connection
 				console.error('Failed to connect to websocket within openTimeout (' + options.openTimeout + '), disabling aow');
 				aowEnabled = false;
+
+				// Replay queue
+				$(queue).each(function(i, record) {
+					console.log(record);
+					originalFunctions[record.originalMethod].apply(this, record.args);
+				});
 			}
 		}, options.openTimeout);
 
@@ -110,7 +116,11 @@ var aow = function() {
 				opts.callback = params[1];
 			}
 
-			sendRequest(params[0], opts);
+			if (!socketOpen) {
+				opts.args = arguments;
+			}
+
+			sendRequest('get', params[0], opts);
 		};
 
 		jQuery.getJSON = function() {
@@ -135,10 +145,14 @@ var aow = function() {
 			opts.postDataFilters = [];
 			opts.postDataFilters.push({ method : JSON.parse });
 
-			sendRequest(params[0], opts);
+			if (!socketOpen) {
+				opts.args = arguments;
+			}
+
+			sendRequest('getJSON', params[0], opts);
 		};
 
-		var sendRequest = function(req, opts) {
+		var sendRequest = function(originalMethod, req, opts) {
 			// Get request ID
 			reqId++;
 
@@ -150,7 +164,9 @@ var aow = function() {
 				sendTime : null, 
 				receiveTime : null,
 				callback: null,
-				postDataFilters: []
+				postDataFilters: null,
+				originalMethod: originalMethod,
+				args: null
 			};
 			if (opts !== null) {
 				for (var k in opts) {
