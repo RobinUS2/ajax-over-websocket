@@ -8,7 +8,6 @@
 			};
 			var update = function() {
 				var startTime = myTime();
-				$.get('../examples/response.json');
 				$.get('response.json', function(resp) {
 					var finishTime = myTime();
 					var latency = finishTime - startTime;
@@ -16,16 +15,23 @@
 					console.log('get', resp);
 				});
 			};
-			update();
+			update(); // Immediate to test behavior during connect
 			setInterval(function() {
 				update();
 			}, 500);
 
-			$.get('response.json');
+			setTimeout(function() {
+				// Simple get
+				$.get('response.json');
 
-			$.getJSON('response.json', function(resp, status, xhr) {
-				console.log('json', resp, status, xhr);
-			});
+				// Relative path
+				$.get('../examples/response.json');
+
+				// Get JSON
+				$.getJSON('response.json', function(resp, status, xhr) {
+					console.log('json', resp, status, xhr);
+				});
+			}, 1000);
 		</script>
 	</head>
 	<body>
