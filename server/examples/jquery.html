@@ -3,6 +3,11 @@
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
 		<script src="../aow.js"></script>
 		<script type="text/javascript">
+			var aowEnabled = true;
+			$.ajaxOverWebsocket({
+				enabled: aowEnabled,
+				/*methods: ['GET'],*/
+			});
 			var myTime = function() {
 				return window.performance.now();
 			};
