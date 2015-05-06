@@ -8,7 +8,21 @@ var aowEnabled = true;
 if (aowInit) {
 	console.log('aow init');
 
-	var exampleSocket = new WebSocket("ws://localhost/echo");
+	var options = {
+		socket : 'ws://localhost/echo',
+		openTimeout : 500
+	};
+
+	var exampleSocket = new WebSocket(options.socket);
+
+	// Connection timeout
+	setTimeout(function() {
+		if (!socketOpen) {
+			// Failed connection
+			console.error('Failed to connect to websocket within openTimeout (' + options.openTimeout + '), disabling aow');
+			aowEnabled = false;
+		}
+	}, options.openTimeout);
 
 	exampleSocket.onmessage = function (event) {
 		var split = event.data.split('\t');
@@ -41,6 +55,16 @@ if (aowInit) {
 	var reqId = 0;
 	var reqs = [];
 	var debug = false;
+
+	exampleSocket.onerror = function (event) {
+		console.error('Websocket error, disabling aow');
+		aowEnabled = false;
+	};
+
+	exampleSocket.onclose = function (event) {
+		console.error('Websocket closed, disabling aow');
+		aowEnabled = false;
+	};
 
 	exampleSocket.onopen = function (event) {
 		socketOpen = true;
