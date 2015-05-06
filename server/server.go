@@ -5,6 +5,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"golang.org/x/net/websocket"
 	"io/ioutil"
@@ -29,8 +30,18 @@ type AOWResponse struct {
 
 var clientPool sync.Pool
 
+// Flag
+var port int
+var debug bool
+
+func init() {
+	flag.IntVar(&port, "p", 80, "Port")
+	flag.BoolVar(&debug, "debug", false, "Testing debug")
+	flag.Parse()
+}
+
 // Echo the data received on the WebSocket.
-func EchoServer(ws *websocket.Conn) {
+func socketHandler(ws *websocket.Conn) {
 	var err error
 	for {
 		var reply string
@@ -40,7 +51,9 @@ func EchoServer(ws *websocket.Conn) {
 			break
 		}
 
-		fmt.Println("Received from client: " + reply)
+		if debug {
+			fmt.Println("Received from client: " + reply)
+		}
 
 		// Json decode
 		var req = AOWRequest{}
@@ -88,7 +101,9 @@ func EchoServer(ws *websocket.Conn) {
 		msg := string(respBytes)
 
 		// Send to client
-		fmt.Println("Sending to client: " + msg)
+		if debug {
+			fmt.Println("Sending to client: " + msg)
+		}
 		if err = websocket.Message.Send(ws, msg); err != nil {
 			fmt.Println("Can't send")
 			break
@@ -111,15 +126,17 @@ func main() {
 	}
 
 	// Webserver
-	http.Handle("/", http.FileServer(http.Dir(".")))    // Testing only
-	http.Handle("/echo", websocket.Handler(EchoServer)) // Handler
+	if debug {
+		http.Handle("/", http.FileServer(http.Dir("."))) // Testing only
+	}
+	http.Handle("/proxy", websocket.Handler(socketHandler)) // Handler
 
 	/*http.HandleFunc("/echo", func(w http.ResponseWriter, req *http.Request) {
 		s := websocket.Server{Handler: websocket.Handler(EchoServer)}
 		s.ServeHTTP(w, req)
 	})*/
 
-	err := http.ListenAndServe(":80", nil)
+	err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 	if err != nil {
 		panic("ListenAndServe: " + err.Error())
 	}

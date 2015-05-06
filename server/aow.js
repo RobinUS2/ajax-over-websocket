@@ -5,7 +5,7 @@
 **/
 jQuery.ajaxOverWebsocket = function(userOptions) {
 	var options = {
-		socket : 'ws://localhost/echo', // URI to websocket server
+		socket : 'ws://your-host/echo', // URI to websocket server
 		openTimeout : 100, // Millisecond timeout to connect to the socket
 		queueOnConnect: false, // Set into queue for the websocket channel, false will execute fallback until socket is available
 		debug: false, // Debug logging
