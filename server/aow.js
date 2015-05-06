@@ -120,7 +120,7 @@ var aow = function() {
 				opts.args = arguments;
 			}
 
-			sendRequest('get', params[0], opts);
+			sendRequest('get', 'GET', params[0], opts);
 		};
 
 		jQuery.getJSON = function() {
@@ -149,17 +149,17 @@ var aow = function() {
 				opts.args = arguments;
 			}
 
-			sendRequest('getJSON', params[0], opts);
+			sendRequest('getJSON', 'GET', params[0], opts);
 		};
 
-		var sendRequest = function(originalMethod, req, opts) {
+		var sendRequest = function(originalMethod, method, uri, opts) {
 			// Get request ID
 			reqId++;
 
 			// Assemble record
 			var record = { 
 				id : reqId, 
-				param : req, 
+				uri : uri, 
 				startTime : now(), 
 				sendTime : null, 
 				receiveTime : null,
@@ -194,7 +194,7 @@ var aow = function() {
 			if (debug) {
 				console.log('sending', record);
 			}
-			exampleSocket.send(record.id + '\t' + record.param);
+			exampleSocket.send(record.id + '\t' + record.uri);
 		};
 
 		var now = function() { 
