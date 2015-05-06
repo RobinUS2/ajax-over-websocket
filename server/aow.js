@@ -25,8 +25,7 @@ var aow = function() {
 
 				// Replay queue
 				$(queue).each(function(i, record) {
-					console.log(record);
-					originalFunctions[record.originalMethod].apply(this, record.args);
+					record.executeFallback();
 				});
 			}
 		}, options.openTimeout);
@@ -166,7 +165,11 @@ var aow = function() {
 				callback: null,
 				postDataFilters: null,
 				originalMethod: originalMethod,
-				args: null
+				args: null,
+				executeFallback : function() {
+					console.error('Fallback request ' + this.id);
+					originalFunctions[this.originalMethod].apply(this, this.args);
+				}
 			};
 			if (opts !== null) {
 				for (var k in opts) {
