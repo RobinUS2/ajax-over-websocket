@@ -10,11 +10,13 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"sync"
 )
 
 type AOWRequest struct {
-	Id  int64  `json:"id"`
-	URI string `json:"uri"`
+	Id     int64  `json:"id"`
+	URI    string `json:"uri"`
+	Method string `json:"method"`
 }
 
 type AOWResponse struct {
@@ -25,6 +27,11 @@ type AOWResponse struct {
 // Echo the data received on the WebSocket.
 func EchoServer(ws *websocket.Conn) {
 	var err error
+
+	// Client
+	ptr := &http.Transport{}
+	pclient := &http.Client{Transport: ptr}
+	var pmux sync.RWMutex
 
 	for {
 		var reply string
@@ -43,20 +50,30 @@ func EchoServer(ws *websocket.Conn) {
 		}
 
 		// Load
-		appHtmlBytes, appHtmlBytesErr := ioutil.ReadFile(fmt.Sprintf("examples/%s", req.URI))
-		if appHtmlBytesErr != nil {
-			log.Println("ERR: Failed to open")
-			break
+		pmux.Lock()
+		preq, perr := http.NewRequest(req.Method, fmt.Sprintf("http://localhost/examples/%s", req.URI), nil)
+		//req.Header.Add("X-Forwarded-For", ipAddress)
+		presp, perr := pclient.Do(preq)
+		if perr != nil {
+			log.Printf("%s\n", perr)
+			pmux.Unlock()
+			return
+		}
+		defer presp.Body.Close()
+		body, readErr := ioutil.ReadAll(presp.Body)
+		if readErr != nil {
+			log.Printf("%s\n", readErr)
 		}
 
 		// Response wrapper
 		var resp = AOWResponse{}
 		resp.Id = req.Id
-		resp.Text = string(appHtmlBytes)
+		resp.Text = string(body)
 		respBytes, jErr := json.Marshal(resp)
 		if jErr != nil {
 			panic(jErr)
 		}
+		pmux.Unlock()
 
 		// Msg
 		msg := string(respBytes)
