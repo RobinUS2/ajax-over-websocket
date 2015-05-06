@@ -26,8 +26,7 @@ jQuery.ajaxOverWebsocket = function(userOptions) {
 	}
 
 	// Create socket
-	// @todo Rename
-	var exampleSocket = new WebSocket(options.socket);
+	var sock = new WebSocket(options.socket);
 
 	// Connection timeout
 	setTimeout(function() {
@@ -44,7 +43,7 @@ jQuery.ajaxOverWebsocket = function(userOptions) {
 	}, options.openTimeout);
 
 	// Receive messages on the socket
-	exampleSocket.onmessage = function (event) {
+	sock.onmessage = function (event) {
 		var aowResp = JSON.parse(event.data);
 		var reqId = aowResp.id;
 		var rawData = aowResp.text;
@@ -127,19 +126,19 @@ jQuery.ajaxOverWebsocket = function(userOptions) {
 	var reqs = [];
 
 	// Catch socket errors
-	exampleSocket.onerror = function (event) {
+	sock.onerror = function (event) {
 		console.error('Websocket error, disabling aow');
 		aowEnabled = false;
 	};
 
 	// Catch socket close
-	exampleSocket.onclose = function (event) {
+	sock.onclose = function (event) {
 		console.error('Websocket closed, disabling aow');
 		aowEnabled = false;
 	};
 
 	// Listen for open event
-	exampleSocket.onopen = function (event) {
+	sock.onopen = function (event) {
 		socketOpen = true;
 		if (options.debug) {
 			console.log('connection opened');
@@ -323,7 +322,7 @@ jQuery.ajaxOverWebsocket = function(userOptions) {
 			method: record.method,
 			headers: record.headers
 		});
-		exampleSocket.send(reqStr);
+		sock.send(reqStr);
 	};
 
 	// Current timer
