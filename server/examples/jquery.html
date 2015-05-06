@@ -22,8 +22,8 @@
 
 			$.get('response.json');
 
-			$.getJSON('response.json', function(resp) {
-				console.log('json', resp);
+			$.getJSON('response.json', function(resp, status, xhr) {
+				console.log('json', resp, status, xhr);
 			});
 		</script>
 	</head>

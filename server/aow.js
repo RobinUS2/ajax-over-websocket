@@ -35,6 +35,7 @@ var aow = function() {
 		exampleSocket.onmessage = function (event) {
 			var split = event.data.split('\t');
 			var reqId = split[0];
+			var rawData = split[1];
 			var data = split[1];
 			var req = reqs[reqId];
 			req.receiveTime = now();
@@ -55,7 +56,13 @@ var aow = function() {
 
 			if (typeof req.callback === 'function') {
 				// @todo Make jQuery compatible: object data - string text status - jqXHR
-				reqs[reqId].callback(data);
+				// @url https://github.com/jquery/jquery/blob/9d1b989f20b550af3590691723b0620f6914626e/src/ajax.js#L419
+				var xhr = new XMLHttpRequest();
+				xhr.statusText = 'success'; // @todo Map
+				xhr.status = 200; // @todo Map
+				xhr.responseText = rawData;
+				xhr.readyState = 4; // @todo Map
+				reqs[reqId].callback(data, xhr.statusText, xhr);
 			}
 		};
 
