@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 )
 
 // Echo the data received on the WebSocket.
@@ -25,12 +26,14 @@ func EchoServer(ws *websocket.Conn) {
 
 		fmt.Println("Received back from client: " + reply)
 
-		appHtmlBytes, appHtmlBytesErr := ioutil.ReadFile(fmt.Sprintf("examples/%s", reply))
+		parts := strings.Split(reply, "\t")
+
+		appHtmlBytes, appHtmlBytesErr := ioutil.ReadFile(fmt.Sprintf("examples/%s", parts[1]))
 		if appHtmlBytesErr != nil {
 			log.Println("ERR: Failed to open")
 			break
 		}
-		msg := string(appHtmlBytes)
+		msg := fmt.Sprintf("%s\t%s", parts[0], string(appHtmlBytes))
 
 		fmt.Println("Sending to client: " + msg)
 

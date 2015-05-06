@@ -3,10 +3,21 @@
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
 		<script src="../aow.js"></script>
 		<script type="text/javascript">
-			setInterval(function() {
+			var myTime = function() {
+				return window.performance.now();
+			};
+			var update = function() {
+				var startTime = myTime();
 				$.get('response.json', function(resp) {
+					var finishTime = myTime();
+					var latency = finishTime - startTime;
+					console.log('end user latency ' + latency);
 					console.log(resp);
 				});
+			};
+			update();
+			setInterval(function() {
+				update();
 			}, 500);
 		</script>
 	</head>
