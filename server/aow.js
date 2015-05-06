@@ -6,10 +6,11 @@
 jQuery.ajaxOverWebsocket = function(userOptions) {
 	var options = {
 		socket : 'ws://your-host/echo', // URI to websocket server
-		openTimeout : 100, // Millisecond timeout to connect to the socket
+		openTimeout : 1000, // Millisecond timeout to connect to the socket
 		queueOnConnect: false, // Set into queue for the websocket channel, false will execute fallback until socket is available
 		debug: false, // Debug logging
 		enabled: true, // Enable proxy features
+		lazyConnect: true, // Connect on the first request
 		methods: ['GET', 'PUT', 'POST', 'DELETE', 'HEAD'], // Enabled methods
 	};
 	// Merge options
@@ -26,14 +27,124 @@ jQuery.ajaxOverWebsocket = function(userOptions) {
 	}
 
 	// Create socket
-	var sock = new WebSocket(options.socket);
+	var sock = null;
+	var openSocket = function() {
+		if (socketConnecting) {
+			return;
+		}
+		if (options.debug) {
+			console.log('opening aow socket');
+		}
+		socketConnecting = true;
+		sock = new WebSocket(options.socket);
+
+		// Receive messages on the socket
+		sock.onmessage = function (event) {
+			var aowResp = JSON.parse(event.data);
+			var reqId = aowResp.id;
+			var rawData = aowResp.text;
+			var data = aowResp.text;
+			var req = reqs[reqId];
+			req.receiveTime = now();
+			var latency = req.receiveTime - req.startTime;
+			if (options.debug) {
+				console.log(req);
+				console.log(data);
+				console.log('latency ' + latency);
+			}
+
+			// Fix XHR
+			req.xhr.state = 2;
+			req.xhr.readyState = 4;
+			req.xhr.statusCode(aowResp.status);
+			//req.xhr.status = aowResp.status; // @todo based on response status
+			req.xhr.statusText = aowResp.status <= 399 ? 'success' : 'error'; // @todo based on response status
+			req.xhr.responseText = rawData;
+
+			// Set headers in XHR object
+			req.xhr.responseHeaders = {};
+			req.xhr.responseHeadersString = '';
+			for (var k in aowResp.headers) {
+				var v = aowResp.headers[k][0];
+				req.xhr.responseHeaders[k] = v;
+				req.xhr.responseHeadersString += k + ': ' + v+ '\n';
+			};
+			req.xhr.getResponseHeader = function(k) {
+				return typeof this.responseHeaders[k] === 'undefined' ? null : this.responseHeaders[k];
+			};
+			req.xhr.getAllResponseHeaders = function() {
+				return this.responseHeadersString;
+			};
+
+			// Speculative data filters (mimic jQuery behavior, although this is kind of stupid)
+			if (typeof req.postDataFilters === 'undefined' || req.postDataFilters === null || req.postDataFilters.length === 0) {
+				// Auto JSON
+				if (req.xhr.getResponseHeader('Content-Type').toLowerCase().indexOf('json') !== -1) {
+					req.postDataFilters = [];
+					req.postDataFilters.push({ method: jQuery.parseJSON });
+				}
+			}
+
+			// Run data filters
+			if (typeof req.postDataFilters !== 'undefined' && req.postDataFilters !== null && req.postDataFilters.length !== 0) {
+				for (var k in req.postDataFilters) {
+					// @todo has own prop
+					var postDataFilter = req.postDataFilters[k];
+					data = postDataFilter.method.apply(this, [data]);
+				}
+			}
+
+			// Callbacks
+			if (req.xhr.statusText === 'success' && typeof req.success === 'function') {
+				// Success
+				reqs[reqId].success(data, req);
+			} else if (req.xhr.statusText !== 'success' && typeof req.error === 'function') {
+				// Error
+				reqs[reqId].error(req.xhr.statusText, req);
+			}
+
+			// Complete
+			if (typeof req.complete === 'function') {
+				reqs[reqId].complete(req);
+			}
+		};
+
+		// Catch socket errors
+		sock.onerror = function (event) {
+			console.error('Websocket error, disabling aow');
+			options.enabled = false;
+		};
+
+		// Catch socket close
+		sock.onclose = function (event) {
+			console.error('Websocket closed, disabling aow');
+			options.enabled = false;
+		};
+
+		// Listen for open event
+		sock.onopen = function (event) {
+			socketOpen = true;
+			if (options.debug) {
+				console.log('connection opened');
+			}
+			$(queue).each(function(i, record) {
+				deliver(record);
+			});
+			if (options.debug) {
+				console.log('flushed queue');
+			}
+		};
+	};
+	if (!options.lazyConnect) {
+		openSocket();
+	}
 
 	// Connection timeout
 	setTimeout(function() {
 		if (!socketOpen) {
 			// Failed connection
 			console.error('Failed to connect to websocket within openTimeout (' + options.openTimeout + '), disabling aow');
-			aowEnabled = false;
+			options.enabled = false;
 
 			// Replay queue
 			$(queue).each(function(i, record) {
@@ -42,114 +153,20 @@ jQuery.ajaxOverWebsocket = function(userOptions) {
 		}
 	}, options.openTimeout);
 
-	// Receive messages on the socket
-	sock.onmessage = function (event) {
-		var aowResp = JSON.parse(event.data);
-		var reqId = aowResp.id;
-		var rawData = aowResp.text;
-		var data = aowResp.text;
-		var req = reqs[reqId];
-		req.receiveTime = now();
-		var latency = req.receiveTime - req.startTime;
-		if (options.debug) {
-			console.log(req);
-			console.log(data);
-			console.log('latency ' + latency);
-		}
-
-		// Fix XHR
-		req.xhr.state = 2;
-		req.xhr.readyState = 4;
-		req.xhr.statusCode(aowResp.status);
-		//req.xhr.status = aowResp.status; // @todo based on response status
-		req.xhr.statusText = aowResp.status <= 399 ? 'success' : 'error'; // @todo based on response status
-		req.xhr.responseText = rawData;
-
-		// Set headers in XHR object
-		req.xhr.responseHeaders = {};
-		req.xhr.responseHeadersString = '';
-		for (var k in aowResp.headers) {
-			var v = aowResp.headers[k][0];
-			req.xhr.responseHeaders[k] = v;
-			req.xhr.responseHeadersString += k + ': ' + v+ '\n';
-		};
-		req.xhr.getResponseHeader = function(k) {
-			return typeof this.responseHeaders[k] === 'undefined' ? null : this.responseHeaders[k];
-		};
-		req.xhr.getAllResponseHeaders = function() {
-			return this.responseHeadersString;
-		};
-
-		// Speculative data filters (mimic jQuery behavior, although this is kind of stupid)
-		if (typeof req.postDataFilters === 'undefined' || req.postDataFilters === null || req.postDataFilters.length === 0) {
-			// Auto JSON
-			if (req.xhr.getResponseHeader('Content-Type').toLowerCase().indexOf('json') !== -1) {
-				req.postDataFilters = [];
-				req.postDataFilters.push({ method: jQuery.parseJSON });
-			}
-		}
-
-		// Run data filters
-		if (typeof req.postDataFilters !== 'undefined' && req.postDataFilters !== null && req.postDataFilters.length !== 0) {
-			for (var k in req.postDataFilters) {
-				// @todo has own prop
-				var postDataFilter = req.postDataFilters[k];
-				data = postDataFilter.method.apply(this, [data]);
-			}
-		}
-
-		// Callbacks
-		if (req.xhr.statusText === 'success' && typeof req.success === 'function') {
-			// Success
-			reqs[reqId].success(data, req);
-		} else if (req.xhr.statusText !== 'success' && typeof req.error === 'function') {
-			// Error
-			reqs[reqId].error(req.xhr.statusText, req);
-		}
-
-		// Complete
-		if (typeof req.complete === 'function') {
-			reqs[reqId].complete(req);
-		}
-	};
-
 	// Queue for replaying
 	var queue = [];
 
 	// Did we connect?
 	var socketOpen = false;
 
+	// Are we connecting?
+	var socketConnecting = false;
+
 	// Request ID
 	var reqId = 0;
 
 	// Requests (pending AND results)
 	var reqs = [];
-
-	// Catch socket errors
-	sock.onerror = function (event) {
-		console.error('Websocket error, disabling aow');
-		aowEnabled = false;
-	};
-
-	// Catch socket close
-	sock.onclose = function (event) {
-		console.error('Websocket closed, disabling aow');
-		aowEnabled = false;
-	};
-
-	// Listen for open event
-	sock.onopen = function (event) {
-		socketOpen = true;
-		if (options.debug) {
-			console.log('connection opened');
-		}
-		$(queue).each(function(i, record) {
-			deliver(record);
-		});
-		if (options.debug) {
-			console.log('flushed queue');
-		}
-	};
 
 	// Keep original functions
 	var originalFunctions = {
@@ -159,6 +176,27 @@ jQuery.ajaxOverWebsocket = function(userOptions) {
 		console.log('original functions', originalFunctions);
 	}
 
+	// Empty object
+	var objEmpty = function(obj) {
+
+	    // null and undefined are "empty"
+	    if (obj == null) return true;
+
+	    // Assume if it has a length property with a non-zero value
+	    // that that property is correct.
+	    if (obj.length > 0)    return false;
+	    if (obj.length === 0)  return true;
+
+	    // Otherwise, does it have any properties of its own?
+	    // Note that this doesn't handle
+	    // toString and valueOf enumeration bugs in IE < 9
+	    for (var key in obj) {
+	        if (hasOwnProperty.call(obj, key)) return false;
+	    }
+
+	    return true;
+	};
+
 	// Override jQuery ajax
 	jQuery.ajax = function() {
 		// Capture arguments
@@ -167,8 +205,17 @@ jQuery.ajaxOverWebsocket = function(userOptions) {
 		// Request method
 		var requestMethod = ajaxArgs[0].type ? ajaxArgs[0].type.toUpperCase() : 'GET';
 
+		// Lazy open
+		if (!socketOpen && !socketConnecting && options.lazyConnect) {
+			if (options.debug) {
+				console.log('opening aow socket from lazy load');
+			}
+			openSocket();
+		}
+
 		// Enabled and supported?
-		if (!aowEnabled || !socketOpen || options.methods.indexOf(requestMethod) === -1) {
+		// @todo Support data objects
+		if (!options.enabled || !socketOpen || options.methods.indexOf(requestMethod) === -1 || !objEmpty(ajaxArgs[0].data)) {
 			// Regular ajax call
 			return originalFunctions['ajax'].apply(this, arguments);
 		}
