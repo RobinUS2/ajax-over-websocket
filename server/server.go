@@ -24,15 +24,11 @@ type AOWResponse struct {
 	Text string `json:"text"`
 }
 
+var clientPool sync.Pool
+
 // Echo the data received on the WebSocket.
 func EchoServer(ws *websocket.Conn) {
 	var err error
-
-	// Client
-	ptr := &http.Transport{}
-	pclient := &http.Client{Transport: ptr}
-	var pmux sync.RWMutex
-
 	for {
 		var reply string
 
@@ -49,15 +45,18 @@ func EchoServer(ws *websocket.Conn) {
 			panic(err)
 		}
 
-		// Load
-		// @todo Have connection pool of clients to better support concurrency
-		pmux.Lock()
+		// Get client from pool
+		pclient := clientPool.Get().(*http.Client)
+
+		// Prepare request
 		preq, perr := http.NewRequest(req.Method, fmt.Sprintf("http://localhost/examples/%s", req.URI), nil)
 		//req.Header.Add("X-Forwarded-For", ipAddress)
 		presp, perr := pclient.Do(preq)
 		if perr != nil {
 			log.Printf("%s\n", perr)
-			pmux.Unlock()
+
+			// Return client to pool
+			clientPool.Put(pclient)
 			return
 		}
 		defer presp.Body.Close()
@@ -74,7 +73,9 @@ func EchoServer(ws *websocket.Conn) {
 		if jErr != nil {
 			panic(jErr)
 		}
-		pmux.Unlock()
+
+		// Return client to pool
+		clientPool.Put(pclient)
 
 		// Msg
 		msg := string(respBytes)
@@ -91,8 +92,20 @@ func EchoServer(ws *websocket.Conn) {
 // This example demonstrates a trivial echo server.
 func main() {
 	log.Println("Starting")
-	http.Handle("/", http.FileServer(http.Dir(".")))
-	http.Handle("/echo", websocket.Handler(EchoServer))
+
+	// Client pool
+	clientPool = sync.Pool{
+		New: func() interface{} {
+			log.Println("New HTTP client")
+			ptr := &http.Transport{}
+			pclient := &http.Client{Transport: ptr}
+			return pclient
+		},
+	}
+
+	// Webserver
+	http.Handle("/", http.FileServer(http.Dir(".")))    // Testing only
+	http.Handle("/echo", websocket.Handler(EchoServer)) // Handler
 	err := http.ListenAndServe(":80", nil)
 	if err != nil {
 		panic("ListenAndServe: " + err.Error())
