@@ -163,21 +163,34 @@ jQuery.ajaxOverWebsocket = function(userOptions) {
 					if (typeof ajaxArgs[0].success === 'function') {
 						ajaxArgs[0].success(data, req.xhr.statusText, req.xhr);
 					}
+
+					// jQuery .done() callback
+					if (typeof xhr.done === 'function') {
+						xhr.done(data, req.xhr.statusText, req.xhr);
+					}
 				},
 				complete: function(req) {
 					// jQuery complete callback (called AFTER success / error)
 					if (typeof ajaxArgs[0].complete === 'function') {
 						ajaxArgs[0].complete(req.xhr, req.xhr.statusText);
 					}
+
+					// @todo jQuery .always() callback (problem is that this has different order of params depending on success state)
 				},
 				error: function(err, req) {
 					// jQuery error callback
 					if (typeof ajaxArgs[0].error === 'function') {
 						ajaxArgs[0].error(req.xhr, req.xhr.statusText, err);
 					}
+
+					// jQuery .fail() callback
+					if (typeof xhr.fail === 'function') {
+						xhr.fail(req.xhr, req.xhr.statusText, err);
+					}
 				},
 				args : ajaxArgs,
-				xhr: xhr
+				xhr: xhr,
+				postDataFilters: []
 			};
 
 			// Cancel AJAX
@@ -186,6 +199,26 @@ jQuery.ajaxOverWebsocket = function(userOptions) {
 			// Headers
 			if (typeof ajaxArgs[0].headers !== 'undefined') {
 				opts.headers = ajaxArgs[0].headers;
+			}
+
+			// Post data filters
+			if (typeof ajaxArgs[0].dataFilter === 'function') {
+				opts.postDataFilters.push({ method : ajaxArgs[0].dataFilter });
+			}
+
+			// Data type
+			if (typeof ajaxArgs[0].dataType !== 'undefined') {
+				switch (ajaxArgs[0].dataType) {
+					case 'json':
+						opts.postDataFilters.push({ method : jQuery.parseJSON });
+					break;
+					case 'script':
+						opts.postDataFilters.push({ method : window.eval });
+					break;
+					case 'xml':
+						opts.postDataFilters.push({ method : jQuery.parseXML });
+					break;
+				}
 			}
 
 			// Send

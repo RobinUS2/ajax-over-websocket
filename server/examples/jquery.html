@@ -35,6 +35,11 @@
 				// Simple post
 				$.post('response.json', { key : 'value' });
 
+				// Post with callback
+				$.post('response.json', { key : 'value' }, function(data) {
+					console.log('post callback', data);
+				}, 'json');
+
 				// Custom headers
 				$.ajax({
 				    url: 'response.json',
@@ -53,6 +58,47 @@
 				    complete: function(xhr, textStatus) {
 				    	console.log('ajax complete', textStatus, xhr);
 				    }
+				});
+
+				// Test error
+				var errorFound = false;
+				$.ajax({
+				    url: 'asdflajsdfhasfdasdfasdf',
+				    error: function(xhr, textStatus, err) {
+				    	console.log('error caught', xhr.status, textStatus, err);
+				    	errorFound = true;
+				    },
+				    complete: function(xhr, textStatus) {
+				    	if (!errorFound) {
+				    		throw new Error('Error callback not handled well');
+				    	}
+				    }
+				});
+
+				// Data filter
+				$.ajax({
+				    url: 'response.json',
+				    dataFilter: function(data) {
+				    	return JSON.parse(data);
+				    },
+				    success: function(data, textStatus, xhr) {
+				    	console.log('dataFilter', data);
+				    }
+				});
+
+				// Load script
+				$.getScript('response.js', function() {
+					console.log('script loaded', SCRIPT_IS_LOADED);
+				});
+
+				// .done() callback
+				$.get('response.json').done(function( script, textStatus ) {
+					console.log('done()');
+				});
+
+				// .fail() callback
+				$.get('asdflajsdfhasfdasdfasdf.json').fail(function( jqxhr, settings, exception ) {
+					console.log('fail()');
 				});
 
 				// Get JSON
