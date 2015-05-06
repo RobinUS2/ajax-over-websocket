@@ -14,9 +14,10 @@ import (
 )
 
 type AOWRequest struct {
-	Id     int64  `json:"id"`
-	URI    string `json:"uri"`
-	Method string `json:"method"`
+	Id      int64             `json:"id"`
+	URI     string            `json:"uri"`
+	Method  string            `json:"method"`
+	Headers map[string]string `json:"headers"`
 }
 
 type AOWResponse struct {
@@ -39,7 +40,7 @@ func EchoServer(ws *websocket.Conn) {
 			break
 		}
 
-		fmt.Println("Received back from client: " + reply)
+		fmt.Println("Received from client: " + reply)
 
 		// Json decode
 		var req = AOWRequest{}
@@ -52,7 +53,9 @@ func EchoServer(ws *websocket.Conn) {
 
 		// Prepare request
 		preq, perr := http.NewRequest(req.Method, fmt.Sprintf("%s", req.URI), nil)
-		//req.Header.Add("X-Forwarded-For", ipAddress)
+		for k, v := range req.Headers {
+			preq.Header.Add(k, v)
+		}
 		presp, perr := pclient.Do(preq)
 		if perr != nil {
 			log.Printf("%s\n", perr)
