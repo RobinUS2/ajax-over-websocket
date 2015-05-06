@@ -58,10 +58,15 @@ jQuery.ajaxOverWebsocket = function(userOptions) {
 			console.log('latency ' + latency);
 		}
 
+		// Set headers in XHR object
+		$(aowResp.headers).each(function(k, v) {
+			req.xhr.setRequestHeader(k, v[0]);
+		});
+
 		// Speculative data filters (mimic jQuery behavior, although this is kind of stupid)
 		if (typeof req.postDataFilters === 'undefined' || req.postDataFilters === null || req.postDataFilters.length === 0) {
 			// Auto JSON
-			if (aowResp.headers['Content-Type'][0].toLowerCase().indexOf('json') !== -1) {
+			if (req.getRequestHeader('Content-Type').toLowerCase().indexOf('json') !== -1) {
 				req.postDataFilters = [];
 				req.postDataFilters.push({ method: jQuery.parseJSON });
 			}
@@ -78,7 +83,8 @@ jQuery.ajaxOverWebsocket = function(userOptions) {
 
 		// Fix XHR
 		req.xhr.readyState = 4;
-		req.xhr.status = aowResp.status; // @todo based on response status
+		req.xhr.statusCode(aowResp.status);
+		//req.xhr.status = aowResp.status; // @todo based on response status
 		req.xhr.statusText = aowResp.status <= 399 ? 'success' : 'error'; // @todo based on response status
 		req.xhr.responseText = rawData;
 
@@ -88,8 +94,7 @@ jQuery.ajaxOverWebsocket = function(userOptions) {
 			reqs[reqId].success(data, req);
 		} else if (req.xhr.statusText !== 'success' && typeof req.error === 'function') {
 			// Error
-			// @todo Forward error
-			reqs[reqId].error('err here', req);
+			reqs[reqId].error(req.xhr.statusText, req);
 		}
 
 		// Complete

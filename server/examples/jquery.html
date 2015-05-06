@@ -3,7 +3,7 @@
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
 		<script src="../aow.js"></script>
 		<script type="text/javascript">
-			var aowEnabled = true;
+			var aowEnabled = false;
 			$.ajaxOverWebsocket({
 				enabled: aowEnabled,
 				/*methods: ['GET'],*/
@@ -43,7 +43,11 @@
 				// Custom headers
 				$.ajax({
 				    url: 'response.json',
-				    headers: { 'x-my-custom-header': 'some value' }
+				    headers: { 'x-my-custom-header': 'some value' },
+				    success: function(data, textStatus, xhr) {
+				    	console.log('all headers', xhr.getAllResponseHeaders());
+				    	console.log('one header', xhr.getResponseHeader('Content-Length'));
+				    }
 				});
 
 				// Before send
