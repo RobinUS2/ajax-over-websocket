@@ -57,7 +57,7 @@ var aow = function() {
 			// Fix XHR
 			req.xhr.readyState = 4;
 			req.xhr.status = aowResp.status; // @todo based on response status
-			req.xhr.statusText = 'success'; // @todo based on response status
+			req.xhr.statusText = aowResp.status <= 399 ? 'success' : 'error'; // @todo based on response status
 			req.xhr.responseText = rawData;
 
 			// Callback
