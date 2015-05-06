@@ -54,15 +54,15 @@ var aow = function() {
 				}
 			}
 
+			// Fix XHR
+			req.xhr.readyState = 4;
+			req.xhr.status = aowResp.status; // @todo based on response status
+			req.xhr.statusText = 'success'; // @todo based on response status
+			req.xhr.responseText = rawData;
+
+			// Callback
 			if (typeof req.callback === 'function') {
-				// @todo Make jQuery compatible: object data - string text status - jqXHR
-				// @url https://github.com/jquery/jquery/blob/9d1b989f20b550af3590691723b0620f6914626e/src/ajax.js#L419
-				var xhr = new XMLHttpRequest();
-				xhr.statusText = 'success'; // @todo Map
-				xhr.status = 200; // @todo Map
-				xhr.responseText = rawData;
-				xhr.readyState = 4; // @todo Map
-				reqs[reqId].callback(data, xhr.statusText, xhr);
+				reqs[reqId].callback(data, req.xhr.statusText, req.xhr);
 			}
 		};
 
@@ -95,6 +95,7 @@ var aow = function() {
 		}
 
 		var originalFunctions = {
+			'ajax':     jQuery.ajax,
 			'get':     jQuery.get,
 			'getJSON': jQuery.getJSON
 		};
@@ -102,62 +103,41 @@ var aow = function() {
 			console.log('original functions', originalFunctions);
 		}
 
-		jQuery.get = function() {
-			// Params
-			var params = arguments;
-
-			// Only if we support this type of request
-			var supported = false;
-			if (params.length == 1 && typeof params[0] === 'string') {
-				supported = true;
-			} else if (params.length == 2 && typeof params[0] === 'string' && typeof params[1] === 'function') {
-				supported = true;
+		jQuery.ajax = function() {
+			// Enabled
+			if (!aowEnabled || !socketOpen) {
+				// Regular ajax call
+				return originalFunctions['ajax'].apply(this, arguments);
 			}
 
-			// Did we support this?
-			if (!supported || !aowEnabled) {
-				return originalFunctions['get'].apply(this, arguments);
-			}
+			// Capture arguments
+			var ajaxArgs = arguments;
 
-			var opts = {};
-			if (typeof params[1] === 'function') {
-				opts.callback = params[1];
-			}
+			// Capture the old before hook in order to cancel this one
+			var oldBefore = arguments[0].beforeSend;
+			arguments[0].beforeSend = function(xhr) {
+				// Apply old before
+				if (typeof oldBefore !== 'undefined') {
+					oldBefore.apply(this, arguments);
+				}
 
-			if (!socketOpen) {
-				opts.args = arguments;
-			}
+				// Dispatch our way
+				var opts = {
+					callback: ajaxArgs[0].success,
+					args : ajaxArgs,
+					xhr: xhr
+				};
 
-			sendRequest('get', 'GET', params[0], opts);
-		};
 
-		jQuery.getJSON = function() {
-			// Params
-			var params = arguments;
+				// Cancel AJAX
+				xhr.abort();
 
-			// Only if we support this type of request
-			var supported = false;
-			if (params.length == 2 && typeof params[0] === 'string' && typeof params[1] === 'function') {
-				supported = true;
-			}
+				// Send
+				sendRequest('ajax', ajaxArgs[0].type.toUpperCase(), ajaxArgs[0].url, opts);
+			};
 
-			// Did we support this?
-			if (!supported || !aowEnabled) {
-				return originalFunctions['getJSON'].apply(this, arguments);
-			}
-
-			var opts = {};
-			if (typeof params[1] === 'function') {
-				opts.callback = params[1];
-			}
-			opts.postDataFilters = [];
-			opts.postDataFilters.push({ method : JSON.parse });
-
-			if (!socketOpen) {
-				opts.args = arguments;
-			}
-
-			sendRequest('getJSON', 'GET', params[0], opts);
+			// Execute as if we were jquery ajax, although we are cancelling this anyway
+			return originalFunctions['ajax'].apply(this, arguments);
 		};
 
 		var sendRequest = function(originalMethod, method, uri, opts) {
@@ -173,6 +153,7 @@ var aow = function() {
 
 			// Assemble record
 			var record = { 
+				method: method,
 				id : reqId, 
 				uri : uri, 
 				startTime : now(), 
@@ -216,12 +197,14 @@ var aow = function() {
 
 		var deliver = function(record) {
 			reqs[record.id].sendTime = now();
+			reqs[record.id].xhr.readyState = 1; // Started
 			if (options.debug) {
 				console.log('sending', record);
 			}
 			var reqStr = JSON.stringify({
 				id: record.id,
-				uri : record.uri
+				uri : record.uri,
+				method: record.method
 			});
 			exampleSocket.send(reqStr);
 		};

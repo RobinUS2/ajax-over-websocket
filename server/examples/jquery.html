@@ -27,6 +27,9 @@
 				// Relative path
 				$.get('../examples/response.json');
 
+				// Simple post
+				$.post('response.json', { key : 'value' });
+
 				// Get JSON
 				$.getJSON('response.json', function(resp, status, xhr) {
 					console.log('json', resp, status, xhr);
