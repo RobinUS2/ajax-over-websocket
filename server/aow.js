@@ -3,8 +3,9 @@
 * @author Robin Verlangen
 * @url https://github.com/RobinUS2/ajax-over-websocket
 **/
-var enabled = true;
-if (enabled) {
+var aowInit = true;
+var aowEnabled = true;
+if (aowInit) {
 	console.log('aow init');
 
 	var exampleSocket = new WebSocket("ws://localhost/echo");
@@ -75,7 +76,7 @@ if (enabled) {
 		}
 
 		// Did we support this?
-		if (!supported) {
+		if (!supported || !aowEnabled) {
 			return originalFunctions['get'].apply(this, arguments);
 		}
 
@@ -98,7 +99,7 @@ if (enabled) {
 		}
 
 		// Did we support this?
-		if (!supported) {
+		if (!supported || !aowEnabled) {
 			return originalFunctions['getJSON'].apply(this, arguments);
 		}
 
