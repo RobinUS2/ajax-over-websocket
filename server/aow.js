@@ -10,8 +10,10 @@ var aow = function() {
 		console.log('aow init');
 
 		var options = {
-			socket : 'ws://localhost/echo',
-			openTimeout : 100
+			socket : 'ws://localhost/echo', // URI to websocket server
+			openTimeout : 100, // Millisecond timeout to connect to the socket
+			queueOnConnect: false, // Set into queue for the websocket channel, false will execute fallback until socket is available
+			debug: false, // Debug logging
 		};
 
 		var exampleSocket = new WebSocket(options.socket);
@@ -37,7 +39,7 @@ var aow = function() {
 			var req = reqs[reqId];
 			req.receiveTime = now();
 			var latency = req.receiveTime - req.startTime;
-			if (debug) {
+			if (options.debug) {
 				console.log(req);
 				console.log(data);
 				console.log('latency ' + latency);
@@ -60,7 +62,6 @@ var aow = function() {
 		var socketOpen = false;
 		var reqId = 0;
 		var reqs = [];
-		var debug = false;
 
 		exampleSocket.onerror = function (event) {
 			console.error('Websocket error, disabling aow');
@@ -74,13 +75,13 @@ var aow = function() {
 
 		exampleSocket.onopen = function (event) {
 			socketOpen = true;
-			if (debug) {
+			if (options.debug) {
 				console.log('connection opened');
 			}
 			$(queue).each(function(i, record) {
 				deliver(record);
 			});
-			if (debug) {
+			if (options.debug) {
 				console.log('flushed queue');
 			}
 		}
@@ -89,7 +90,7 @@ var aow = function() {
 			'get':     jQuery.get,
 			'getJSON': jQuery.getJSON
 		};
-		if (debug) {
+		if (options.debug) {
 			console.log('original functions', originalFunctions);
 		}
 
@@ -167,7 +168,9 @@ var aow = function() {
 				originalMethod: originalMethod,
 				args: null,
 				executeFallback : function() {
-					console.error('Fallback request ' + this.id);
+					if (options.debug) {
+						console.log('Fallback request ' + this.id);
+					}
 					originalFunctions[this.originalMethod].apply(this, this.args);
 				}
 			};
@@ -183,10 +186,14 @@ var aow = function() {
 
 			// Queue
 			if (!socketOpen) {
-				if (debug) {
-					console.log('request queued for connecting socket')
+				if (options.queueOnConnect) {
+					if (options.debug) {
+						console.log('request queued for connecting socket')
+					}
+					queue.push(record);
+				} else {
+					record.executeFallback();
 				}
-				queue.push(record);
 			} else {
 				deliver(record);
 			}
@@ -194,7 +201,7 @@ var aow = function() {
 
 		var deliver = function(record) {
 			reqs[record.id].sendTime = now();
-			if (debug) {
+			if (options.debug) {
 				console.log('sending', record);
 			}
 			exampleSocket.send(record.id + '\t' + record.uri);
