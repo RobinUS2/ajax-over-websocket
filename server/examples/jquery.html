@@ -30,6 +30,12 @@
 				// Simple post
 				$.post('response.json', { key : 'value' });
 
+				// Custom headers
+				$.ajax({
+				    url: 'response.json',
+				    headers: { 'x-my-custom-header': 'some value' }
+				});
+
 				// Get JSON
 				$.getJSON('response.json', function(resp, status, xhr) {
 					console.log('json', resp, status, xhr);

@@ -128,12 +128,16 @@ var aow = function() {
 					xhr: xhr
 				};
 
-
 				// Cancel AJAX
 				xhr.abort();
 
+				// Headers
+				if (typeof ajaxArgs[0].headers !== 'undefined') {
+					opts.headers = ajaxArgs[0].headers;
+				}
+
 				// Send
-				sendRequest('ajax', ajaxArgs[0].type.toUpperCase(), ajaxArgs[0].url, opts);
+				sendRequest('ajax', ajaxArgs[0].type ? ajaxArgs[0].type.toUpperCase() : 'GET', ajaxArgs[0].url, opts);
 			};
 
 			// Execute as if we were jquery ajax, although we are cancelling this anyway
@@ -204,7 +208,8 @@ var aow = function() {
 			var reqStr = JSON.stringify({
 				id: record.id,
 				uri : record.uri,
-				method: record.method
+				method: record.method,
+				headers: record.headers
 			});
 			exampleSocket.send(reqStr);
 		};
