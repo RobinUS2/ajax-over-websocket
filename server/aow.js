@@ -38,14 +38,32 @@ if (enabled) {
 		console.log('flushed queue');
 	}
 
-	jQuery.get = function(param, callback) {
+	var originalFunctions = {
+		'get': jQuery.get
+	};
+	console.log(originalFunctions);
+	jQuery.get = function() {
+		// Params
+		var params = arguments;
+
+		// Only if we support this type of request
+		var supported = false;
+		if (params.length == 2 && typeof params[0] === 'string' && typeof params[1] === 'function') {
+			supported = true;
+		}
+
+		// Did we support this?
+		if (!supported) {
+			return originalFunctions['get'].apply(this, arguments);
+		}
+
 		// Get request ID
 		reqId++;
 
 		// Assemble record
 		var record = { 
 			id : reqId, 
-			param : param, 
+			param : params[0], 
 			startTime : now(), 
 			sendTime : null, 
 			receiveTime : null,
@@ -53,8 +71,8 @@ if (enabled) {
 		};
 
 		// Callback?
-		if (typeof callback === 'function') {
-			record.callback = callback;
+		if (typeof params[1] === 'function') {
+			record.callback = params[1];
 		}
 
 		// Track request
