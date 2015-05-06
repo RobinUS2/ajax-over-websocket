@@ -50,6 +50,7 @@ func EchoServer(ws *websocket.Conn) {
 		}
 
 		// Load
+		// @todo Have connection pool of clients to better support concurrency
 		pmux.Lock()
 		preq, perr := http.NewRequest(req.Method, fmt.Sprintf("http://localhost/examples/%s", req.URI), nil)
 		//req.Header.Add("X-Forwarded-For", ipAddress)
