@@ -164,6 +164,13 @@ var aow = function() {
 			// Get request ID
 			reqId++;
 
+			// Fix URI to become absolute URL
+			if (uri.indexOf('http://') === -1 && uri.indexOf('https://') === -1) {
+				var loc = window.location.pathname;
+				var dir = loc.substring(0, loc.lastIndexOf('/'));
+				uri = window.location.origin + dir + '/' + uri;
+			}
+
 			// Assemble record
 			var record = { 
 				id : reqId, 

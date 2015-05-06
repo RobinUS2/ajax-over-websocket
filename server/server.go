@@ -49,7 +49,7 @@ func EchoServer(ws *websocket.Conn) {
 		pclient := clientPool.Get().(*http.Client)
 
 		// Prepare request
-		preq, perr := http.NewRequest(req.Method, fmt.Sprintf("http://localhost/examples/%s", req.URI), nil)
+		preq, perr := http.NewRequest(req.Method, fmt.Sprintf("%s", req.URI), nil)
 		//req.Header.Add("X-Forwarded-For", ipAddress)
 		presp, perr := pclient.Do(preq)
 		if perr != nil {

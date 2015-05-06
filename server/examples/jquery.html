@@ -8,6 +8,7 @@
 			};
 			var update = function() {
 				var startTime = myTime();
+				$.get('../examples/response.json');
 				$.get('response.json', function(resp) {
 					var finishTime = myTime();
 					var latency = finishTime - startTime;
