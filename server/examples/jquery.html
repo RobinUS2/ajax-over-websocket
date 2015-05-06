@@ -41,6 +41,20 @@
 				    headers: { 'x-my-custom-header': 'some value' }
 				});
 
+				// Before send
+				$.ajax({
+				    url: 'response.json',
+				    beforeSend: function() {
+				    	console.log('user defined before send');
+				    },
+				    success: function(data, textStatus, xhr) {
+				    	console.log('ajax success', data, textStatus, xhr);
+				    },
+				    complete: function(xhr, textStatus) {
+				    	console.log('ajax complete', textStatus, xhr);
+				    }
+				});
+
 				// Get JSON
 				$.getJSON('response.json', function(resp, status, xhr) {
 					console.log('json', resp, status, xhr);

@@ -72,9 +72,19 @@ jQuery.ajaxOverWebsocket = function(userOptions) {
 		req.xhr.statusText = aowResp.status <= 399 ? 'success' : 'error'; // @todo based on response status
 		req.xhr.responseText = rawData;
 
-		// Callback
-		if (typeof req.callback === 'function') {
-			reqs[reqId].callback(data, req.xhr.statusText, req.xhr);
+		// Callbacks
+		if (req.xhr.statusText === 'success' && typeof req.success === 'function') {
+			// Success
+			reqs[reqId].success(data, req);
+		} else if (req.xhr.statusText !== 'success' && typeof req.error === 'function') {
+			// Error
+			// @todo Forward error
+			reqs[reqId].error('err here', req);
+		}
+
+		// Complete
+		if (typeof req.complete === 'function') {
+			reqs[reqId].complete(req);
 		}
 	};
 
@@ -148,7 +158,24 @@ jQuery.ajaxOverWebsocket = function(userOptions) {
 
 			// Dispatch our way
 			var opts = {
-				callback: ajaxArgs[0].success,
+				success: function(data, req) {
+					// jQuery success callback
+					if (typeof ajaxArgs[0].success === 'function') {
+						ajaxArgs[0].success(data, req.xhr.statusText, req.xhr);
+					}
+				},
+				complete: function(req) {
+					// jQuery complete callback (called AFTER success / error)
+					if (typeof ajaxArgs[0].complete === 'function') {
+						ajaxArgs[0].complete(req.xhr, req.xhr.statusText);
+					}
+				},
+				error: function(err, req) {
+					// jQuery error callback
+					if (typeof ajaxArgs[0].error === 'function') {
+						ajaxArgs[0].error(req.xhr, req.xhr.statusText, err);
+					}
+				},
 				args : ajaxArgs,
 				xhr: xhr
 			};
@@ -189,7 +216,6 @@ jQuery.ajaxOverWebsocket = function(userOptions) {
 			startTime : now(), 
 			sendTime : null, 
 			receiveTime : null,
-			callback: null,
 			postDataFilters: null,
 			originalMethod: originalMethod,
 			args: null,
