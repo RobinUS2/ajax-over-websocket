@@ -58,15 +58,33 @@ jQuery.ajaxOverWebsocket = function(userOptions) {
 			console.log('latency ' + latency);
 		}
 
+		// Fix XHR
+		req.xhr.state = 2;
+		req.xhr.readyState = 4;
+		req.xhr.statusCode(aowResp.status);
+		//req.xhr.status = aowResp.status; // @todo based on response status
+		req.xhr.statusText = aowResp.status <= 399 ? 'success' : 'error'; // @todo based on response status
+		req.xhr.responseText = rawData;
+
 		// Set headers in XHR object
-		$(aowResp.headers).each(function(k, v) {
-			req.xhr.setRequestHeader(k, v[0]);
-		});
+		req.xhr.responseHeaders = {};
+		req.xhr.responseHeadersString = '';
+		for (var k in aowResp.headers) {
+			var v = aowResp.headers[k][0];
+			req.xhr.responseHeaders[k] = v;
+			req.xhr.responseHeadersString += k + ': ' + v+ '\n';
+		};
+		req.xhr.getResponseHeader = function(k) {
+			return typeof this.responseHeaders[k] === 'undefined' ? null : this.responseHeaders[k];
+		};
+		req.xhr.getAllResponseHeaders = function() {
+			return this.responseHeadersString;
+		};
 
 		// Speculative data filters (mimic jQuery behavior, although this is kind of stupid)
 		if (typeof req.postDataFilters === 'undefined' || req.postDataFilters === null || req.postDataFilters.length === 0) {
 			// Auto JSON
-			if (req.getRequestHeader('Content-Type').toLowerCase().indexOf('json') !== -1) {
+			if (req.xhr.getResponseHeader('Content-Type').toLowerCase().indexOf('json') !== -1) {
 				req.postDataFilters = [];
 				req.postDataFilters.push({ method: jQuery.parseJSON });
 			}
@@ -80,13 +98,6 @@ jQuery.ajaxOverWebsocket = function(userOptions) {
 				data = postDataFilter.method.apply(this, [data]);
 			}
 		}
-
-		// Fix XHR
-		req.xhr.readyState = 4;
-		req.xhr.statusCode(aowResp.status);
-		//req.xhr.status = aowResp.status; // @todo based on response status
-		req.xhr.statusText = aowResp.status <= 399 ? 'success' : 'error'; // @todo based on response status
-		req.xhr.responseText = rawData;
 
 		// Callbacks
 		if (req.xhr.statusText === 'success' && typeof req.success === 'function') {
