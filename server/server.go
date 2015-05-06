@@ -20,9 +20,10 @@ type AOWRequest struct {
 }
 
 type AOWResponse struct {
-	Id     int64  `json:"id"`
-	Text   string `json:"text"`
-	Status int    `json:"status"`
+	Id      int64               `json:"id"`
+	Text    string              `json:"text"`
+	Status  int                 `json:"status"`
+	Headers map[string][]string `json:"headers"`
 }
 
 var clientPool sync.Pool
@@ -71,6 +72,7 @@ func EchoServer(ws *websocket.Conn) {
 		resp.Id = req.Id
 		resp.Text = string(body)
 		resp.Status = presp.StatusCode
+		resp.Headers = presp.Header
 		respBytes, jErr := json.Marshal(resp)
 		if jErr != nil {
 			panic(jErr)

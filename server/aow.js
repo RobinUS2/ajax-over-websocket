@@ -58,7 +58,17 @@ jQuery.ajaxOverWebsocket = function(userOptions) {
 			console.log('latency ' + latency);
 		}
 
-		if (typeof req.postDataFilters !== 'undefined' && req.postDataFilters !== null && req.postDataFilters.length != 0) {
+		// Speculative data filters (mimic jQuery behavior, although this is kind of stupid)
+		if (typeof req.postDataFilters === 'undefined' || req.postDataFilters === null || req.postDataFilters.length === 0) {
+			// Auto JSON
+			if (aowResp.headers['Content-Type'][0].toLowerCase().indexOf('json') !== -1) {
+				req.postDataFilters = [];
+				req.postDataFilters.push({ method: jQuery.parseJSON });
+			}
+		}
+
+		// Run data filters
+		if (typeof req.postDataFilters !== 'undefined' && req.postDataFilters !== null && req.postDataFilters.length !== 0) {
 			for (var k in req.postDataFilters) {
 				// @todo has own prop
 				var postDataFilter = req.postDataFilters[k];
