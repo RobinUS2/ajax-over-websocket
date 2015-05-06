@@ -33,10 +33,10 @@ var aow = function() {
 		}, options.openTimeout);
 
 		exampleSocket.onmessage = function (event) {
-			var split = event.data.split('\t');
-			var reqId = split[0];
-			var rawData = split[1];
-			var data = split[1];
+			var aowResp = JSON.parse(event.data);
+			var reqId = aowResp.id;
+			var rawData = aowResp.text;
+			var data = aowResp.text;
 			var req = reqs[reqId];
 			req.receiveTime = now();
 			var latency = req.receiveTime - req.startTime;
@@ -212,7 +212,11 @@ var aow = function() {
 			if (options.debug) {
 				console.log('sending', record);
 			}
-			exampleSocket.send(record.id + '\t' + record.uri);
+			var reqStr = JSON.stringify({
+				id: record.id,
+				uri : record.uri
+			});
+			exampleSocket.send(reqStr);
 		};
 
 		var now = function() { 

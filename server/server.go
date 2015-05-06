@@ -4,13 +4,23 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"golang.org/x/net/websocket"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"strings"
 )
+
+type AOWRequest struct {
+	Id  int64  `json:"id"`
+	URI string `json:"uri"`
+}
+
+type AOWResponse struct {
+	Id   int64  `json:"id"`
+	Text string `json:"text"`
+}
 
 // Echo the data received on the WebSocket.
 func EchoServer(ws *websocket.Conn) {
@@ -26,17 +36,33 @@ func EchoServer(ws *websocket.Conn) {
 
 		fmt.Println("Received back from client: " + reply)
 
-		parts := strings.Split(reply, "\t")
+		// Json decode
+		var req = AOWRequest{}
+		if err := json.Unmarshal([]byte(reply), &req); err != nil {
+			panic(err)
+		}
 
-		appHtmlBytes, appHtmlBytesErr := ioutil.ReadFile(fmt.Sprintf("examples/%s", parts[1]))
+		// Load
+		appHtmlBytes, appHtmlBytesErr := ioutil.ReadFile(fmt.Sprintf("examples/%s", req.URI))
 		if appHtmlBytesErr != nil {
 			log.Println("ERR: Failed to open")
 			break
 		}
-		msg := fmt.Sprintf("%s\t%s", parts[0], string(appHtmlBytes))
 
+		// Response wrapper
+		var resp = AOWResponse{}
+		resp.Id = req.Id
+		resp.Text = string(appHtmlBytes)
+		respBytes, jErr := json.Marshal(resp)
+		if jErr != nil {
+			panic(jErr)
+		}
+
+		// Msg
+		msg := string(respBytes)
+
+		// Send to client
 		fmt.Println("Sending to client: " + msg)
-
 		if err = websocket.Message.Send(ws, msg); err != nil {
 			fmt.Println("Can't send")
 			break
