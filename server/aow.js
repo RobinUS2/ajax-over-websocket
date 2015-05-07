@@ -213,8 +213,19 @@ jQuery.ajaxOverWebsocket = function(userOptions) {
 			openSocket();
 		}
 
+		// Data objects
+		var url = ajaxArgs[0].url;
+		if (requestMethod === 'GET' && !objEmpty(ajaxArgs[0].data)) {
+			if (url.indexOf('?') === -1) {
+				url += '?' + jQuery.param(ajaxArgs[0].data);
+			} else {
+				url += '&' + jQuery.param(ajaxArgs[0].data);
+			}
+			ajaxArgs[0].data = {};
+		}
+		// @todo Support data for POST/PUT/DELETE requests
+
 		// Enabled and supported?
-		// @todo Support data objects
 		if (!options.enabled || !socketOpen || options.methods.indexOf(requestMethod) === -1 || !objEmpty(ajaxArgs[0].data)) {
 			// Regular ajax call
 			return originalFunctions['ajax'].apply(this, arguments);
@@ -227,6 +238,7 @@ jQuery.ajaxOverWebsocket = function(userOptions) {
 			if (typeof oldBefore !== 'undefined') {
 				oldBefore.apply(this, arguments);
 			}
+			console.log(xhr);
 
 			// Dispatch our way
 			var opts = {
@@ -294,7 +306,7 @@ jQuery.ajaxOverWebsocket = function(userOptions) {
 			}
 
 			// Send
-			sendRequest('ajax', requestMethod, ajaxArgs[0].url, opts);
+			sendRequest('ajax', requestMethod, url, opts);
 		};
 
 		// Execute as if we were jquery ajax, although we are cancelling this anyway
